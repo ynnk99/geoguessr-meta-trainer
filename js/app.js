@@ -7,6 +7,10 @@
 const ANSWER_COLUMN = "Land";
 // Spalten, die nie als Quiz-Frage benutzt werden, egal was in den Einstellungen steht.
 const NON_QUIZ_COLUMNS = ["Kontinent"];
+// Suffixe, die eine Spalte als "Bild-Begleitspalte" zu einer anderen Spalte kennzeichnen.
+// Beispiel: "Bollard" (Text/Meta) + "Bollard URL" (Bild-Link) -> werden zu einem Feld zusammengeführt,
+// "Bollard URL" taucht dann nicht mehr als eigene Kategorie auf.
+const IMAGE_COMPANION_SUFFIXES = ["url", "bild", "image", "foto", "photo"];
 const LS_PROGRESS   = "meta-atlas-progress-v1";
 const LS_COLUMNS    = "meta-atlas-enabled-columns-v1";
 const LS_MODE       = "meta-atlas-answer-mode-v1";
@@ -29,6 +33,8 @@ let answerMode = "type"; // "type" | "choice"
 let category = ALL_CATEGORIES; // ALL_CATEGORIES or a single column name — which meta(s) to drill
 let columnDirectionOverrides = {}; // persisted: { column: 'forward' | 'reverse' }, only user-set entries
 let columnDirections = {};         // effective per-column direction for the current dataset
+let imageCompanionOf = {};         // { baseColumn: companionColumn } — e.g. { "Bollard": "Bollard URL" }
+let imageCompanionColumns = [];    // list of companion column names (hidden from quiz/category lists)
 
 let currentItem = null;  // { country, column, value }
 let lastItemKey = null;
@@ -53,6 +59,32 @@ function isImageValue(val) {
   return typeof val === "string" && /^https?:\/\//i.test(val.trim());
 }
 
+// Findet Spalten wie "Bollard URL" / "Bollard Bild" / "Bollard Image" und ordnet sie
+// ihrer Basis-Spalte ("Bollard") zu, sofern diese existiert. Groß-/Kleinschreibung
+// und "-"/"_" statt Leerzeichen werden toleriert.
+function detectImageCompanions(headers) {
+  const map = {};            // baseHeader -> companionHeader
+  const companions = [];     // companionHeader list
+  const bySimpleName = new Map(headers.map(h => [normalize(h), h]));
+
+  headers.forEach(h => {
+    const simple = normalize(h);
+    for (const suffix of IMAGE_COMPANION_SUFFIXES) {
+      if (simple.length > suffix.length && simple.endsWith(suffix)) {
+        const baseSimple = simple.slice(0, simple.length - suffix.length);
+        const baseHeader = bySimpleName.get(baseSimple);
+        if (baseHeader && baseHeader !== h) {
+          map[baseHeader] = h;
+          companions.push(h);
+        }
+        break;
+      }
+    }
+  });
+
+  return { map, companions };
+}
+
 function loadJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -68,8 +100,12 @@ function saveJSON(key, val) {
 function ingestParsedData(parsedRows) {
   rows = parsedRows.filter(r => r[ANSWER_COLUMN] && r[ANSWER_COLUMN].trim());
   const headers = Object.keys(rows[0] || {});
-  columns = headers.filter(h => h !== ANSWER_COLUMN && !NON_QUIZ_COLUMNS.includes(h));
-  allColumns = headers.filter(h => h !== ANSWER_COLUMN);
+  const { map: companionMap, companions } = detectImageCompanions(headers);
+  imageCompanionOf = companionMap;
+  imageCompanionColumns = companions;
+
+  columns = headers.filter(h => h !== ANSWER_COLUMN && !NON_QUIZ_COLUMNS.includes(h) && !companions.includes(h));
+  allColumns = headers.filter(h => h !== ANSWER_COLUMN && !companions.includes(h));
   countries = [...new Set(rows.map(r => r[ANSWER_COLUMN].trim()))].sort();
 
   const savedCols = loadJSON(LS_COLUMNS, null);
@@ -297,7 +333,12 @@ function renderCountryInfo(countryName) {
 
   allColumns.forEach(col => {
     const raw = (row[col] || "").trim();
-    const hasValue = raw && raw !== "-";
+    const companionCol = imageCompanionOf[col];
+    const imageRaw = companionCol ? (row[companionCol] || "").trim() : (isImageValue(raw) ? raw : "");
+    const hasImage = imageRaw && imageRaw !== "-" && isImageValue(imageRaw);
+    const textRaw = (raw && raw !== "-" && raw !== imageRaw && !isImageValue(raw)) ? raw : "";
+    const hasText = !!textRaw;
+    const hasValue = hasImage || hasText;
 
     const fieldRow = document.createElement("div");
     fieldRow.className = "field-row" + (hasValue ? "" : " field-row-empty");
@@ -314,23 +355,21 @@ function renderCountryInfo(countryName) {
       span.className = "field-empty";
       span.textContent = "keine Angabe";
       value.appendChild(span);
-    } else if (isImageValue(raw)) {
-      const img = document.createElement("img");
-      img.src = raw;
-      img.alt = `${col} — ${countryName}`;
-      img.loading = "lazy";
-      img.onerror = () => {
-        const p = document.createElement("p");
-        p.className = "field-text";
-        p.textContent = raw;
-        img.replaceWith(p);
-      };
-      value.appendChild(img);
     } else {
-      const p = document.createElement("p");
-      p.className = "field-text";
-      p.textContent = raw;
-      value.appendChild(p);
+      if (hasImage) {
+        const img = document.createElement("img");
+        img.src = imageRaw;
+        img.alt = `${col} — ${countryName}`;
+        img.loading = "lazy";
+        img.onerror = () => { img.remove(); };
+        value.appendChild(img);
+      }
+      if (hasText) {
+        const p = document.createElement("p");
+        p.className = hasImage ? "field-caption" : "field-text";
+        p.textContent = textRaw;
+        value.appendChild(p);
+      }
     }
 
     fieldRow.appendChild(name);
@@ -351,8 +390,11 @@ function buildPool() {
     const country = r[ANSWER_COLUMN].trim();
     activeColumns.forEach(col => {
       const val = (r[col] || "").trim();
-      if (!val || val === "-") return;
-      pool.push({ country, column: col, value: val });
+      const companionCol = imageCompanionOf[col];
+      const imageRaw = companionCol ? (r[companionCol] || "").trim() : "";
+      const image = (imageRaw && imageRaw !== "-") ? imageRaw : "";
+      if ((!val || val === "-") && !image) return;
+      pool.push({ country, column: col, value: val, image });
     });
   });
   return pool;
@@ -413,15 +455,37 @@ function nextQuestion() {
     reverse ? `${currentItem.column} — welches Land?` : currentItem.column;
 
   const clueValue = reverse ? currentItem.country : currentItem.value;
-  if (!reverse && isImageValue(clueValue)) {
+  const clueImage = reverse ? "" : currentItem.image;
+
+  if (!reverse && clueImage && isImageValue(clueImage)) {
+    // bevorzugt: Bild aus der verknüpften Bild-Spalte (z. B. "Bollard URL")
+    clueBody.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.className = "clue-image-wrap";
+    const img = document.createElement("img");
+    img.src = clueImage;
+    img.alt = currentItem.column;
+    img.onerror = () => { img.remove(); };
+    wrap.appendChild(img);
+    if (clueValue && clueValue !== "-" && clueValue !== clueImage && !isImageValue(clueValue)) {
+      const cap = document.createElement("p");
+      cap.className = "clue-caption";
+      cap.textContent = clueValue;
+      wrap.appendChild(cap);
+    }
+    clueBody.appendChild(wrap);
+  } else if (!reverse && isImageValue(clueValue)) {
+    // Fallback: Spalte selbst enthält den Bild-Link (kein separates URL-Feld nötig)
     clueBody.innerHTML = "";
     const img = document.createElement("img");
     img.src = clueValue;
     img.alt = currentItem.column;
     img.onerror = () => { clueBody.innerHTML = `<p>${clueValue}</p>`; };
     clueBody.appendChild(img);
-  } else {
+  } else if (clueValue && clueValue !== "-") {
     clueBody.innerHTML = `<p>${clueValue}</p>`;
+  } else {
+    clueBody.innerHTML = `<p class="empty-msg">Kein Hinweis vorhanden.</p>`;
   }
 
   // typing mode: suggest countries normally, or the small set of possible
