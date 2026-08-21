@@ -85,6 +85,16 @@ erkannt — unter **Einstellungen** kannst du einzelne davon für den
 gemischten Modus an- oder abschalten, oder direkt im Quiz-Dropdown eine
 einzelne Kategorie gezielt üben.
 
+## Umgedrehte Fragen (Land → Wert)
+
+Bei Spalten mit nur wenigen möglichen Antworten (z. B. „Straßenseite“ mit nur
+„links“/„rechts“) macht es wenig Sinn, vom Wert auf das Land zu schließen —
+viele Länder teilen sich denselben Wert. Solche Spalten werden automatisch
+erkannt (≤ 6 unterschiedliche Werte) und umgedreht abgefragt: Das **Land**
+wird als Hinweis gezeigt, du wählst/tippst den passenden **Wert**. Unter
+**Einstellungen** lässt sich die Richtung pro Spalte manuell umschalten
+(Button „Wert → Land“ / „Land → Wert“ neben jeder Spalte).
+
 ## Wie der Trainer funktiniert
 
 - **Zufällige Frage**: Für eine zufällige Länder/Meta-Kombination (aus den

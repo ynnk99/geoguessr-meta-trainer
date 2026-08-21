@@ -314,7 +314,21 @@ main{
 .muted.small{ font-size: 12px; margin-top: 8px; margin-bottom:0; }
 code{ font-family: var(--font-mono); background: var(--ink-raised); padding: 1px 5px; border-radius: 2px; }
 
-.column-toggles{ display:flex; flex-wrap:wrap; gap: 8px; }
+.column-toggles{ display:flex; flex-direction:column; gap: 8px; }
+.col-toggle-row{ display:flex; gap: 8px; align-items:center; }
+.col-toggle{ flex: 1; text-align:left; }
+.dir-toggle{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dir-toggle.reversed{ border-color: var(--gold); color: var(--gold); }
 .col-toggle{
   font-family: var(--font-mono);
   font-size: 12px;

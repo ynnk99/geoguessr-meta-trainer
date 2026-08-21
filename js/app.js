@@ -12,7 +12,11 @@ const LS_COLUMNS    = "meta-atlas-enabled-columns-v1";
 const LS_MODE       = "meta-atlas-answer-mode-v1";
 const LS_CATEGORY   = "meta-atlas-category-v1";
 const LS_SHEET_URL  = "meta-atlas-sheet-url-v1";
+const LS_DIRECTIONS = "meta-atlas-directions-v1";
 const ALL_CATEGORIES = "__all__";
+// Spalten mit wenigen unterschiedlichen Werten (z. B. "links"/"rechts") werden
+// standardmäßig "umgedreht": Land wird als Hinweis gezeigt, der Wert erraten.
+const REVERSE_VALUE_THRESHOLD = 6;
 
 let rows = [];          // parsed CSV rows (array of objects)
 let columns = [];        // quiz-able column names (all headers except ANSWER_COLUMN)
@@ -21,6 +25,8 @@ let countries = [];      // unique list of country names
 let progress = {};       // { "Land||Column": {attempts, correct, streak} }
 let answerMode = "type"; // "type" | "choice"
 let category = ALL_CATEGORIES; // ALL_CATEGORIES or a single column name — which meta(s) to drill
+let columnDirectionOverrides = {}; // persisted: { column: 'forward' | 'reverse' }, only user-set entries
+let columnDirections = {};         // effective per-column direction for the current dataset
 
 let currentItem = null;  // { country, column, value }
 let lastItemKey = null;
@@ -69,6 +75,7 @@ function ingestParsedData(parsedRows) {
     : [...columns];
   if (enabledColumns.length === 0) enabledColumns = [...columns];
 
+  computeDirections();
   buildColumnToggles();
   buildCategorySelect();
   buildCountryDatalist();
@@ -159,10 +166,40 @@ function handleCSVUpload(file) {
 
 /* ---------------- Column settings ---------------- */
 
+function computeDirections() {
+  columnDirectionOverrides = loadJSON(LS_DIRECTIONS, {});
+  columnDirections = {};
+  columns.forEach(col => {
+    if (columnDirectionOverrides[col] === "forward" || columnDirectionOverrides[col] === "reverse") {
+      columnDirections[col] = columnDirectionOverrides[col];
+      return;
+    }
+    const distinct = new Set();
+    rows.forEach(r => {
+      const v = (r[col] || "").trim();
+      if (v && v !== "-" && !isImageValue(v)) distinct.add(normalize(v));
+    });
+    columnDirections[col] =
+      (distinct.size > 0 && distinct.size <= REVERSE_VALUE_THRESHOLD) ? "reverse" : "forward";
+  });
+}
+
+function toggleDirection(col) {
+  const next = columnDirections[col] === "reverse" ? "forward" : "reverse";
+  columnDirections[col] = next;
+  columnDirectionOverrides[col] = next;
+  saveJSON(LS_DIRECTIONS, columnDirectionOverrides);
+  buildColumnToggles();
+  buildCategorySelect();
+}
+
 function buildColumnToggles() {
   const container = document.getElementById("column-toggles");
   container.innerHTML = "";
   columns.forEach(col => {
+    const row = document.createElement("div");
+    row.className = "col-toggle-row";
+
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "col-toggle" + (enabledColumns.includes(col) ? " on" : "");
@@ -177,7 +214,19 @@ function buildColumnToggles() {
       saveJSON(LS_COLUMNS, enabledColumns);
       btn.classList.toggle("on");
     });
-    container.appendChild(btn);
+
+    const dirBtn = document.createElement("button");
+    dirBtn.type = "button";
+    dirBtn.className = "dir-toggle";
+    const isReverse = columnDirections[col] === "reverse";
+    dirBtn.textContent = isReverse ? "Land → Wert" : "Wert → Land";
+    dirBtn.title = "Richtung umkehren";
+    dirBtn.classList.toggle("reversed", isReverse);
+    dirBtn.addEventListener("click", () => toggleDirection(col));
+
+    row.appendChild(btn);
+    row.appendChild(dirBtn);
+    container.appendChild(row);
   });
 }
 
@@ -189,7 +238,10 @@ function buildCategorySelect() {
   const select = document.getElementById("category-select");
   select.innerHTML =
     `<option value="${ALL_CATEGORIES}">Alle Kategorien (Mix)</option>` +
-    columns.map(c => `<option value="${c}">${c}</option>`).join("");
+    columns.map(c => {
+      const suffix = columnDirections[c] === "reverse" ? " (Land → Wert)" : "";
+      return `<option value="${c}">${c}${suffix}</option>`;
+    }).join("");
   select.value = category;
 }
 
@@ -259,24 +311,44 @@ function nextQuestion() {
 
   currentItem = pickItem(pool);
   lastItemKey = itemKey(currentItem.country, currentItem.column);
+  const reverse = columnDirections[currentItem.column] === "reverse";
 
-  document.getElementById("clue-label").textContent = currentItem.column;
-  if (isImageValue(currentItem.value)) {
+  document.getElementById("clue-label").textContent =
+    reverse ? `${currentItem.column} — welches Land?` : currentItem.column;
+
+  const clueValue = reverse ? currentItem.country : currentItem.value;
+  if (!reverse && isImageValue(clueValue)) {
     clueBody.innerHTML = "";
     const img = document.createElement("img");
-    img.src = currentItem.value;
+    img.src = clueValue;
     img.alt = currentItem.column;
-    img.onerror = () => {
-      clueBody.innerHTML = `<p>${currentItem.value}</p>`;
-    };
+    img.onerror = () => { clueBody.innerHTML = `<p>${clueValue}</p>`; };
     clueBody.appendChild(img);
   } else {
-    clueBody.innerHTML = `<p>${currentItem.value}</p>`;
+    clueBody.innerHTML = `<p>${clueValue}</p>`;
   }
+
+  // typing mode: suggest countries normally, or the small set of possible
+  // values when the question is reversed (Land -> Wert)
+  const dl = document.getElementById("country-list");
+  dl.innerHTML = reverse
+    ? valueOptionsFor(currentItem.column).map(v => `<option value="${v}">`).join("")
+    : countries.map(c => `<option value="${c}">`).join("");
+  document.getElementById("type-input").placeholder =
+    reverse ? "Wert eingeben…" : "Land eingeben…";
 
   renderConfidenceDots();
   if (answerMode === "choice") renderChoiceForm();
   document.getElementById("type-input").focus();
+}
+
+function valueOptionsFor(column) {
+  const set = new Set();
+  rows.forEach(r => {
+    const v = (r[column] || "").trim();
+    if (v && v !== "-") set.add(v);
+  });
+  return [...set].sort();
 }
 
 function renderConfidenceDots() {
@@ -295,16 +367,24 @@ function renderConfidenceDots() {
 function renderChoiceForm() {
   const form = document.getElementById("choice-form");
   form.innerHTML = "";
-  const distractors = countries.filter(c => c !== currentItem.country);
-  shuffle(distractors);
-  const options = shuffle([currentItem.country, ...distractors.slice(0, 3)]);
+  const reverse = columnDirections[currentItem.column] === "reverse";
+  const correctAnswer = reverse ? currentItem.value : currentItem.country;
 
-  options.forEach(country => {
+  let options;
+  if (reverse) {
+    options = shuffle(valueOptionsFor(currentItem.column));
+  } else {
+    const distractors = countries.filter(c => c !== currentItem.country);
+    shuffle(distractors);
+    options = shuffle([currentItem.country, ...distractors.slice(0, 3)]);
+  }
+
+  options.forEach(optionText => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "choice-option";
-    btn.textContent = country;
-    btn.addEventListener("click", () => submitAnswer(country, btn, options));
+    btn.textContent = optionText;
+    btn.addEventListener("click", () => submitAnswer(optionText, btn, options, correctAnswer));
     form.appendChild(btn);
   });
 }
@@ -317,9 +397,11 @@ function shuffle(arr) {
   return arr;
 }
 
-function submitAnswer(rawGuess, choiceBtn, allChoiceOptions) {
+function submitAnswer(rawGuess, choiceBtn, allChoiceOptions, correctAnswerOverride) {
   if (!currentItem) return;
-  const correct = normalize(rawGuess) === normalize(currentItem.country);
+  const reverse = columnDirections[currentItem.column] === "reverse";
+  const correctAnswer = correctAnswerOverride || (reverse ? currentItem.value : currentItem.country);
+  const correct = normalize(rawGuess) === normalize(correctAnswer);
 
   // update progress
   const key = itemKey(currentItem.country, currentItem.column);
@@ -341,7 +423,7 @@ function submitAnswer(rawGuess, choiceBtn, allChoiceOptions) {
     const buttons = [...document.getElementById("choice-form").children];
     buttons.forEach(b => {
       b.disabled = true;
-      if (b.textContent === currentItem.country) b.classList.add("correct");
+      if (b.textContent === correctAnswer) b.classList.add("correct");
       else if (b === choiceBtn) b.classList.add("wrong");
     });
   } else {
@@ -353,8 +435,8 @@ function submitAnswer(rawGuess, choiceBtn, allChoiceOptions) {
   feedback.classList.toggle("correct", correct);
   feedback.classList.toggle("wrong", !correct);
   document.getElementById("feedback-text").textContent = correct
-    ? `Richtig — ${currentItem.country}`
-    : `Falsch — richtig war ${currentItem.country}`;
+    ? `Richtig — ${correctAnswer}`
+    : `Falsch — richtig war ${correctAnswer}`;
 
   renderConfidenceDots();
 }
