@@ -22,6 +22,7 @@
     </div>
   </div>
   <div class="topbar-actions">
+    <button id="btn-country" class="btn-ghost" type="button">Land-Infos</button>
     <button id="btn-settings" class="btn-ghost" type="button">Einstellungen</button>
     <button id="btn-stats" class="btn-ghost" type="button">Fortschritt</button>
   </div>
@@ -68,6 +69,19 @@
         <p id="feedback-text"></p>
         <button id="btn-next" class="btn-primary" type="button">Weiter →</button>
       </div>
+    </div>
+  </section>
+
+  <!-- COUNTRY LOOKUP VIEW -->
+  <section id="view-country" class="view hidden">
+    <h2>Land-Infos</h2>
+    <p class="muted">Wähle ein Land und sieh dir alle hinterlegten Metas auf einen Blick an — zum Nachschlagen und gezielten Lernen.</p>
+    <div class="category-bar">
+      <label for="country-lookup-select">Land</label>
+      <select id="country-lookup-select"></select>
+    </div>
+    <div id="country-info-body" class="country-info-body">
+      <p class="empty-msg">Lade Daten…</p>
     </div>
   </section>
 

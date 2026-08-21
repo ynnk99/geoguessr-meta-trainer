@@ -302,6 +302,59 @@ main{
 #feedback.correct{ border-color: var(--teal); }
 #feedback.wrong{ border-color: var(--rust); }
 
+/* ============ Country lookup ============ */
+.country-info-grid{
+  display:flex;
+  flex-direction:column;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.field-row{
+  display:grid;
+  grid-template-columns: 160px 1fr;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--ink-raised);
+  border-bottom: 1px solid var(--line);
+  align-items:center;
+}
+.field-row:last-child{ border-bottom: none; }
+.field-row-empty{ opacity: .55; }
+.field-name{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.field-value{ min-width: 0; }
+.field-text{
+  margin:0;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--paper);
+}
+.field-empty{
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft-2);
+  font-style: italic;
+}
+.field-value img{
+  max-width: 220px;
+  max-height: 150px;
+  border-radius: 3px;
+  display:block;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+
+@media (max-width: 560px){
+  .field-row{ grid-template-columns: 1fr; gap: 6px; }
+}
+
 /* ============ Settings ============ */
 .panel{
   border: 1px solid var(--line);

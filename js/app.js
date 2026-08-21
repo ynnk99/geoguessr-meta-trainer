@@ -13,6 +13,7 @@ const LS_MODE       = "meta-atlas-answer-mode-v1";
 const LS_CATEGORY   = "meta-atlas-category-v1";
 const LS_SHEET_URL  = "meta-atlas-sheet-url-v1";
 const LS_DIRECTIONS = "meta-atlas-directions-v1";
+const LS_COUNTRY_LOOKUP = "meta-atlas-country-lookup-v1";
 const ALL_CATEGORIES = "__all__";
 // Spalten mit wenigen unterschiedlichen Werten (z. B. "links"/"rechts") werden
 // standardmäßig "umgedreht": Land wird als Hinweis gezeigt, der Wert erraten.
@@ -20,6 +21,7 @@ const REVERSE_VALUE_THRESHOLD = 6;
 
 let rows = [];          // parsed CSV rows (array of objects)
 let columns = [];        // quiz-able column names (all headers except ANSWER_COLUMN)
+let allColumns = [];     // every column except ANSWER_COLUMN, incl. NON_QUIZ_COLUMNS (e.g. Kontinent) — used for the country lookup view
 let enabledColumns = []; // subset of `columns` currently used for quizzing
 let countries = [];      // unique list of country names
 let progress = {};       // { "Land||Column": {attempts, correct, streak} }
@@ -67,6 +69,7 @@ function ingestParsedData(parsedRows) {
   rows = parsedRows.filter(r => r[ANSWER_COLUMN] && r[ANSWER_COLUMN].trim());
   const headers = Object.keys(rows[0] || {});
   columns = headers.filter(h => h !== ANSWER_COLUMN && !NON_QUIZ_COLUMNS.includes(h));
+  allColumns = headers.filter(h => h !== ANSWER_COLUMN);
   countries = [...new Set(rows.map(r => r[ANSWER_COLUMN].trim()))].sort();
 
   const savedCols = loadJSON(LS_COLUMNS, null);
@@ -79,6 +82,7 @@ function ingestParsedData(parsedRows) {
   buildColumnToggles();
   buildCategorySelect();
   buildCountryDatalist();
+  buildCountryLookupSelect();
   progress = loadJSON(LS_PROGRESS, {});
   updateScoreboard();
   nextQuestion();
@@ -253,6 +257,84 @@ function buildCategorySelect() {
 function buildCountryDatalist() {
   const dl = document.getElementById("country-list");
   dl.innerHTML = countries.map(c => `<option value="${c}">`).join("");
+}
+
+/* ---------------- Country lookup (learn by country) ---------------- */
+
+function buildCountryLookupSelect() {
+  const select = document.getElementById("country-lookup-select");
+  if (!select) return;
+  select.innerHTML = countries.map(c => `<option value="${c}">${c}</option>`).join("");
+
+  const saved = localStorage.getItem(LS_COUNTRY_LOOKUP);
+  const initial = (saved && countries.includes(saved)) ? saved : countries[0];
+  if (initial) select.value = initial;
+  renderCountryInfo(initial);
+}
+
+function renderCountryInfo(countryName) {
+  const body = document.getElementById("country-info-body");
+  if (!body) return;
+
+  if (!countryName) {
+    body.innerHTML = `<p class="empty-msg">Keine Länder in den Daten gefunden.</p>`;
+    return;
+  }
+
+  const row = rows.find(r => r[ANSWER_COLUMN].trim() === countryName);
+  if (!row) {
+    body.innerHTML = `<p class="empty-msg">Keine Daten für „${countryName}“ gefunden.</p>`;
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "country-info-grid";
+
+  allColumns.forEach(col => {
+    const raw = (row[col] || "").trim();
+    const hasValue = raw && raw !== "-";
+
+    const fieldRow = document.createElement("div");
+    fieldRow.className = "field-row" + (hasValue ? "" : " field-row-empty");
+
+    const name = document.createElement("div");
+    name.className = "field-name";
+    name.textContent = col;
+
+    const value = document.createElement("div");
+    value.className = "field-value";
+
+    if (!hasValue) {
+      const span = document.createElement("span");
+      span.className = "field-empty";
+      span.textContent = "keine Angabe";
+      value.appendChild(span);
+    } else if (isImageValue(raw)) {
+      const img = document.createElement("img");
+      img.src = raw;
+      img.alt = `${col} — ${countryName}`;
+      img.loading = "lazy";
+      img.onerror = () => {
+        const p = document.createElement("p");
+        p.className = "field-text";
+        p.textContent = raw;
+        img.replaceWith(p);
+      };
+      value.appendChild(img);
+    } else {
+      const p = document.createElement("p");
+      p.className = "field-text";
+      p.textContent = raw;
+      value.appendChild(p);
+    }
+
+    fieldRow.appendChild(name);
+    fieldRow.appendChild(value);
+    grid.appendChild(fieldRow);
+  });
+
+  body.innerHTML = "";
+  body.appendChild(grid);
 }
 
 /* ---------------- Quiz engine ---------------- */
@@ -497,6 +579,10 @@ function showView(id) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
   if (id === "view-stats") renderStatsView();
+  if (id === "view-country") {
+    const select = document.getElementById("country-lookup-select");
+    if (select && select.value) renderCountryInfo(select.value);
+  }
 }
 
 /* ---------------- Wiring ---------------- */
@@ -516,6 +602,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btn-settings").addEventListener("click", () => showView("view-settings"));
   document.getElementById("btn-stats").addEventListener("click", () => showView("view-stats"));
+  document.getElementById("btn-country").addEventListener("click", () => showView("view-country"));
+
+  document.getElementById("country-lookup-select").addEventListener("change", (e) => {
+    localStorage.setItem(LS_COUNTRY_LOOKUP, e.target.value);
+    renderCountryInfo(e.target.value);
+  });
 
   document.getElementById("mode-type").addEventListener("click", () => setMode("type"));
   document.getElementById("mode-choice").addEventListener("click", () => setMode("choice"));
