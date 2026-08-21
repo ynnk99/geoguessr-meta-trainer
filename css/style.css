@@ -119,6 +119,12 @@ main{
   cursor: pointer;
 }
 .category-bar select:focus-visible{ outline: 2px solid var(--gold); outline-offset: 1px; }
+.category-bar .lookup-input{
+  width: 260px;
+  max-width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+}
 
 /* ============ Scoreboard ============ */
 .scoreboard{

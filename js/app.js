@@ -82,7 +82,7 @@ function ingestParsedData(parsedRows) {
   buildColumnToggles();
   buildCategorySelect();
   buildCountryDatalist();
-  buildCountryLookupSelect();
+  buildCountryLookupInput();
   progress = loadJSON(LS_PROGRESS, {});
   updateScoreboard();
   nextQuestion();
@@ -261,15 +261,20 @@ function buildCountryDatalist() {
 
 /* ---------------- Country lookup (learn by country) ---------------- */
 
-function buildCountryLookupSelect() {
-  const select = document.getElementById("country-lookup-select");
-  if (!select) return;
-  select.innerHTML = countries.map(c => `<option value="${c}">${c}</option>`).join("");
+function buildCountryLookupInput() {
+  const input = document.getElementById("country-lookup-input");
+  if (!input) return;
 
   const saved = localStorage.getItem(LS_COUNTRY_LOOKUP);
   const initial = (saved && countries.includes(saved)) ? saved : countries[0];
-  if (initial) select.value = initial;
+  if (initial) input.value = initial;
   renderCountryInfo(initial);
+}
+
+function findCountryMatch(rawInput) {
+  const target = normalize(rawInput);
+  if (!target) return null;
+  return countries.find(c => normalize(c) === target) || null;
 }
 
 function renderCountryInfo(countryName) {
@@ -580,8 +585,9 @@ function showView(id) {
   document.getElementById(id).classList.remove("hidden");
   if (id === "view-stats") renderStatsView();
   if (id === "view-country") {
-    const select = document.getElementById("country-lookup-select");
-    if (select && select.value) renderCountryInfo(select.value);
+    const input = document.getElementById("country-lookup-input");
+    const match = input && findCountryMatch(input.value);
+    if (match) renderCountryInfo(match);
   }
 }
 
@@ -604,9 +610,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-stats").addEventListener("click", () => showView("view-stats"));
   document.getElementById("btn-country").addEventListener("click", () => showView("view-country"));
 
-  document.getElementById("country-lookup-select").addEventListener("change", (e) => {
-    localStorage.setItem(LS_COUNTRY_LOOKUP, e.target.value);
-    renderCountryInfo(e.target.value);
+  document.getElementById("country-lookup-input").addEventListener("input", (e) => {
+    const match = findCountryMatch(e.target.value);
+    if (match) {
+      localStorage.setItem(LS_COUNTRY_LOOKUP, match);
+      renderCountryInfo(match);
+    }
   });
 
   document.getElementById("mode-type").addEventListener("click", () => setMode("type"));
