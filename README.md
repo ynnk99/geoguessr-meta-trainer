@@ -59,7 +59,26 @@ Bilder. Damit deine Bollards/Chevrons/Zebrastreifen im Trainer erscheinen,
 müssen die Zellen eine **Bild-URL als Text** enthalten, nicht das Bild
 selbst.
 
-Zwei Wege dahin:
+**Konkret bei „Einfügen → Bild in Zelle einfügen“:** Diese Funktion bettet
+das Bild als echtes Bild-Objekt in die Zelle ein — die Zelle hat dann
+*keinen* Text-Inhalt mehr, auch keine URL im Hintergrund. Weder CSV-Export
+noch der Live-Import können daraus etwas auslesen; die Spalte kommt für den
+Trainer schlicht leer an (das zeigt dir die App jetzt auch direkt unter
+**Einstellungen** an, z. B. „Bollard 0/35“).
+
+Zwei Wege, das zu lösen:
+
+**A — Zusätzliche Text-Spalte**
+Lass die eingefügten Bilder im Sheet zur eigenen Kontrolle stehen, aber leg
+pro Bild-Meta eine zweite Spalte an (z. B. „Bollard URL“), die nur den
+nackten Link als Text enthält. Der Trainer nutzt diese Text-Spalte.
+
+**B — Bild durch Text-URL ersetzen**
+Trage die Bild-URL direkt als Text in die Zelle ein statt sie als Bild
+einzufügen. Du siehst dann im Sheet kein Vorschaubild mehr, aber der Export
+funktioniert direkt.
+
+Für die URLs selbst:
 
 **A — Bilder extern hosten und URL eintragen**
 Lade die Bilder z. B. bei [imgur.com](https://imgur.com) hoch (oder in einen

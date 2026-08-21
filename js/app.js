@@ -200,10 +200,15 @@ function buildColumnToggles() {
     const row = document.createElement("div");
     row.className = "col-toggle-row";
 
+    const filledCount = rows.filter(r => {
+      const v = (r[col] || "").trim();
+      return v && v !== "-";
+    }).length;
+
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "col-toggle" + (enabledColumns.includes(col) ? " on" : "");
-    btn.textContent = col;
+    btn.innerHTML = `${col} <span class="col-count${filledCount === 0 ? ' col-count-empty' : ''}">${filledCount}/${rows.length}</span>`;
     btn.addEventListener("click", () => {
       if (enabledColumns.includes(col)) {
         if (enabledColumns.length === 1) return; // keep at least one
@@ -305,6 +310,10 @@ function nextQuestion() {
       ? `Keine Metas ausgewählt. Geh zu „Einstellungen“ und aktiviere mindestens eine Spalte.`
       : `Für „${category}“ gibt es keine Daten in deiner CSV.`;
     clueBody.innerHTML = `<p class="empty-msg">${msg}</p>`;
+    document.getElementById("clue-label").textContent = category === ALL_CATEGORIES ? "Keine Fragen" : category;
+    document.getElementById("confidence-dots").innerHTML = "";
+    document.getElementById("type-form").classList.add("hidden");
+    document.getElementById("choice-form").classList.add("hidden");
     currentItem = null;
     return;
   }

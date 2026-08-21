@@ -329,6 +329,12 @@ code{ font-family: var(--font-mono); background: var(--ink-raised); padding: 1px
   white-space: nowrap;
 }
 .dir-toggle.reversed{ border-color: var(--gold); color: var(--gold); }
+.col-count{
+  font-size: 10px;
+  opacity: .65;
+  margin-left: 6px;
+}
+.col-count-empty{ color: var(--rust); opacity: 1; }
 .col-toggle{
   font-family: var(--font-mono);
   font-size: 12px;
