@@ -59,22 +59,32 @@ function isImageValue(val) {
   return typeof val === "string" && /^https?:\/\//i.test(val.trim());
 }
 
+// Erlaubt kleine Abweichungen zwischen Basis-Spalte und Bild-Spalten-Namen,
+// z. B. Singular/Plural: "Pole URL" soll trotzdem zu "Poles" passen,
+// "Chevron URL" zu "Chevrons".
+function baseNameMatches(a, b) {
+  if (a === b) return true;
+  if (a + "s" === b || b + "s" === a) return true;
+  if (a + "es" === b || b + "es" === a) return true;
+  return false;
+}
+
 // Findet Spalten wie "Bollard URL" / "Bollard Bild" / "Bollard Image" und ordnet sie
-// ihrer Basis-Spalte ("Bollard") zu, sofern diese existiert. Groß-/Kleinschreibung
-// und "-"/"_" statt Leerzeichen werden toleriert.
+// ihrer Basis-Spalte ("Bollard") zu, sofern diese existiert. Groß-/Kleinschreibung,
+// "-"/"_" statt Leerzeichen sowie einfache Singular/Plural-Abweichungen werden toleriert.
 function detectImageCompanions(headers) {
   const map = {};            // baseHeader -> companionHeader
   const companions = [];     // companionHeader list
-  const bySimpleName = new Map(headers.map(h => [normalize(h), h]));
+  const simpleHeaders = headers.map(h => ({ header: h, simple: normalize(h) }));
 
   headers.forEach(h => {
     const simple = normalize(h);
     for (const suffix of IMAGE_COMPANION_SUFFIXES) {
       if (simple.length > suffix.length && simple.endsWith(suffix)) {
         const baseSimple = simple.slice(0, simple.length - suffix.length);
-        const baseHeader = bySimpleName.get(baseSimple);
-        if (baseHeader && baseHeader !== h) {
-          map[baseHeader] = h;
+        const match = simpleHeaders.find(x => x.header !== h && baseNameMatches(baseSimple, x.simple));
+        if (match) {
+          map[match.header] = h;
           companions.push(h);
         }
         break;
