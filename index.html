@@ -77,7 +77,23 @@
 
     <div class="panel">
       <h3>Datenquelle</h3>
-      <p class="muted">Standardmäßig wird <code>data/data.csv</code> geladen. Du kannst stattdessen eine eigene CSV-Datei hochladen (z.&nbsp;B. der Export aus deinem Google&nbsp;Sheet).</p>
+      <p class="muted">Standardmäßig wird <code>data/data.csv</code> geladen. Du kannst stattdessen live aus einem Google&nbsp;Sheet lesen oder eine CSV-Datei hochladen.</p>
+
+      <label class="field-label" for="sheet-url">Google-Sheet-Link</label>
+      <div class="sheet-row">
+        <input type="text" id="sheet-url" class="type-input" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=…">
+        <button id="btn-sheet-load" class="btn-primary" type="button">Laden</button>
+      </div>
+      <p class="muted small">
+        Sheet muss auf „Jeder mit dem Link kann es ansehen“ freigegeben sein (Teilen-Button oben rechts im Sheet).
+        Einfach den normalen Link aus der Adresszeile einfügen — die passende Tabellen-Ansicht (<code>gid</code>) wird automatisch erkannt.
+        Diese Adresse wird lokal gespeichert und bei jedem Besuch erneut abgerufen.
+      </p>
+      <button id="btn-sheet-clear" class="btn-ghost small-btn" type="button">Sheet-Anbindung entfernen</button>
+
+      <hr class="divider">
+
+      <label class="field-label" for="csv-upload">…oder CSV-Datei hochladen</label>
       <input type="file" id="csv-upload" accept=".csv">
       <p class="muted small" id="csv-status"></p>
     </div>

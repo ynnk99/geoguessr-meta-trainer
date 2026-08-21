@@ -23,12 +23,41 @@ Kein Build-Schritt, kein Backend. Nur `index.html` + `data.csv`.
    Datenquelle** deine CSV-Datei manuell hochladen (funktioniert auch ohne
    Server, weil das per `FileReader` statt `fetch` läuft).
 
-## Eigene Daten aus dem Google Sheet exportieren
+## Eigene Daten einbinden
 
-Wichtig: Bilder, die du **direkt ins Sheet eingefügt** hast (Bild einfügen →
-in Zelle), gehen beim CSV-Export verloren — CSV kann nur Text speichern.
-Damit deine Bollards/Chevrons/Zebrastreifen im Trainer erscheinen, müssen die
-Zellen eine **Bild-URL als Text** enthalten, nicht das Bild selbst.
+Es gibt zwei Wege, deine echten Daten reinzubekommen:
+
+### A — Direkt aus dem Google Sheet laden (empfohlen)
+
+1. Im Sheet oben rechts auf **Teilen** → Zugriff auf „Jeder mit dem Link“ →
+   Rolle „Betrachter“ stellen.
+2. Den normalen Link aus der Adresszeile kopieren (z. B.
+   `https://docs.google.com/spreadsheets/d/ABC123.../edit#gid=456`).
+3. In der App unter **Einstellungen → Datenquelle** den Link einfügen und auf
+   „Laden“ klicken.
+
+Die App merkt sich den Link (lokal in deinem Browser) und lädt bei jedem
+Besuch automatisch die aktuelle Version des Sheets — du musst nichts
+exportieren oder committen. Es gibt keine separate „Sheet-ID“ einzutragen,
+einfach den kompletten Link aus der Adresszeile verwenden.
+
+Falls das Laden fehlschlägt, liegt es fast immer an der Freigabe (Schritt 1)
+— ohne „Jeder mit dem Link“ kann der Browser die Daten nicht lesen.
+
+### B — CSV hochladen / ins Repo legen
+
+Alternativ **Datei → Herunterladen → Kommaseparierte Werte (.csv)** und die
+Datei entweder unter **Einstellungen → CSV hochladen** einmalig testen, oder
+dauerhaft nach `data/data.csv` legen (überschreibt die Beispieldaten).
+
+### Bilder
+
+Wichtig in beiden Fällen: Bilder, die du **direkt ins Sheet eingefügt** hast
+(Bild einfügen → in Zelle), werden nicht mit übertragen — sowohl CSV-Export
+als auch das Live-Lesen können nur Text-Inhalte lesen, keine eingebetteten
+Bilder. Damit deine Bollards/Chevrons/Zebrastreifen im Trainer erscheinen,
+müssen die Zellen eine **Bild-URL als Text** enthalten, nicht das Bild
+selbst.
 
 Zwei Wege dahin:
 
@@ -42,23 +71,19 @@ Lade deine Bilder in einen Ordner `data/images/` in diesem Repo hoch und
 verlinke sie im Sheet als
 `https://raw.githubusercontent.com/<user>/<repo>/main/data/images/<datei>.jpg`.
 
-Sobald alle Bild-Zellen echte URLs (Text, beginnend mit `http`) enthalten:
+Die mitgelieferte `data/data.csv` benutzt bewusst Platzhalterbilder von
+`placehold.co`, die als Bild einfach ihren eigenen Namen zeigen (z. B.
+„Chevron ES“) — das ist kein Fehler, sondern nur eine Demo dafür, dass die
+Bildanzeige funktioniert. Mit echten URLs erscheinen echte Screenshots.
 
-1. Google Sheet → **Datei → Herunterladen → Kommaseparierte Werte (.csv)**
-2. Die Datei nach `data/data.csv` legen (überschreibt die Beispieldaten) —
-   oder direkt im laufenden Trainer unter **Einstellungen → Datenquelle**
-   hochladen, um sie ohne Commit zu testen.
-
-Die erste Zeile der CSV muss die Spaltenüberschriften enthalten. Die Spalte
-**„Land“** ist Pflicht und wird als Antwort verwendet — alle anderen Spalten
-(Bollard, Road Lines, Chevrons, Plates, Sprache, …) werden automatisch als
-mögliche Fragen erkannt. Unter **Einstellungen** kannst du einzelne Spalten
-für den Trainer an- oder abschalten (z. B. „Kontinent“ oder „sonstiges“, wenn
-sie dir zu einfach/zu unspezifisch sind).
-
-Zellen, deren Inhalt mit `http` beginnt, werden automatisch als Bild
-gerendert; alles andere wird als Text angezeigt. Leere Zellen oder `-` werden
-übersprungen.
+Die erste Zeile (egal ob CSV oder Sheet) muss die Spaltenüberschriften
+enthalten. Die Spalte **„Land“** ist Pflicht und wird als Antwort verwendet.
+Die Spalte **„Kontinent“** wird nie als Frage benutzt (fest ausgeschlossen,
+da meist zu generisch/eindeutig). Alle übrigen Spalten (Bollard, Road Lines,
+Chevrons, Plates, Sprache, …) werden automatisch als mögliche Fragen
+erkannt — unter **Einstellungen** kannst du einzelne davon für den
+gemischten Modus an- oder abschalten, oder direkt im Quiz-Dropdown eine
+einzelne Kategorie gezielt üben.
 
 ## Wie der Trainer funktiniert
 

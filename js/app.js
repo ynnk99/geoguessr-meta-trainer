@@ -5,10 +5,13 @@
    ============================================================ */
 
 const ANSWER_COLUMN = "Land";
+// Spalten, die nie als Quiz-Frage benutzt werden, egal was in den Einstellungen steht.
+const NON_QUIZ_COLUMNS = ["Kontinent"];
 const LS_PROGRESS   = "meta-atlas-progress-v1";
 const LS_COLUMNS    = "meta-atlas-enabled-columns-v1";
 const LS_MODE       = "meta-atlas-answer-mode-v1";
 const LS_CATEGORY   = "meta-atlas-category-v1";
+const LS_SHEET_URL  = "meta-atlas-sheet-url-v1";
 const ALL_CATEGORIES = "__all__";
 
 let rows = [];          // parsed CSV rows (array of objects)
@@ -57,7 +60,7 @@ function saveJSON(key, val) {
 function ingestParsedData(parsedRows) {
   rows = parsedRows.filter(r => r[ANSWER_COLUMN] && r[ANSWER_COLUMN].trim());
   const headers = Object.keys(rows[0] || {});
-  columns = headers.filter(h => h !== ANSWER_COLUMN);
+  columns = headers.filter(h => h !== ANSWER_COLUMN && !NON_QUIZ_COLUMNS.includes(h));
   countries = [...new Set(rows.map(r => r[ANSWER_COLUMN].trim()))].sort();
 
   const savedCols = loadJSON(LS_COLUMNS, null);
@@ -74,7 +77,53 @@ function ingestParsedData(parsedRows) {
   nextQuestion();
 }
 
+function sheetLinkToCsvUrl(link) {
+  const idMatch = link.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) return null;
+  const id = idMatch[1];
+  const gidMatch = link.match(/[#&?]gid=(\d+)/);
+  const gid = gidMatch ? gidMatch[1] : "0";
+  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+}
+
+function loadFromURL(url, onStatus) {
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then(text => {
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      if (!parsed.data.length || !parsed.data[0][ANSWER_COLUMN]) {
+        throw new Error(`Keine gültigen Daten gefunden (Spalte „${ANSWER_COLUMN}“ fehlt).`);
+      }
+      ingestParsedData(parsed.data);
+      onStatus(`Geladen: ${rows.length} Länder.`, false);
+    })
+    .catch(err => {
+      onStatus(
+        `Konnte nicht laden (${err.message}). Prüfe, ob das Sheet auf „Jeder mit dem Link kann es ansehen“ freigegeben ist.`,
+        true
+      );
+    });
+}
+
 function loadDefaultCSV() {
+  const savedSheet = localStorage.getItem(LS_SHEET_URL);
+  if (savedSheet) {
+    document.getElementById("sheet-url").value = savedSheet;
+    loadFromURL(savedSheet, (msg, isError) => {
+      const el = document.getElementById("csv-status");
+      el.textContent = msg;
+      el.style.color = isError ? "var(--rust)" : "";
+      if (isError) loadFallbackCSV();
+    });
+    return;
+  }
+  loadFallbackCSV();
+}
+
+function loadFallbackCSV() {
   fetch("data/data.csv")
     .then(r => {
       if (!r.ok) throw new Error("CSV nicht gefunden");
@@ -98,7 +147,10 @@ function handleCSVUpload(file) {
   reader.onload = (e) => {
     const parsed = Papa.parse(e.target.result, { header: true, skipEmptyLines: true });
     ingestParsedData(parsed.data);
+    localStorage.removeItem(LS_SHEET_URL);
+    document.getElementById("sheet-url").value = "";
     document.getElementById("csv-status").textContent = `Geladen: ${file.name} (${rows.length} Länder)`;
+    document.getElementById("csv-status").style.color = "";
     // uploading new data invalidates old column selection defaults
     saveJSON(LS_COLUMNS, enabledColumns);
   };
@@ -397,6 +449,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("csv-upload").addEventListener("change", (e) => {
     if (e.target.files[0]) handleCSVUpload(e.target.files[0]);
+  });
+
+  document.getElementById("btn-sheet-load").addEventListener("click", () => {
+    const raw = document.getElementById("sheet-url").value.trim();
+    const statusEl = document.getElementById("csv-status");
+    if (!raw) { statusEl.textContent = "Bitte einen Link einfügen."; statusEl.style.color = "var(--rust)"; return; }
+    const csvUrl = sheetLinkToCsvUrl(raw);
+    if (!csvUrl) { statusEl.textContent = "Kein gültiger Google-Sheet-Link erkannt."; statusEl.style.color = "var(--rust)"; return; }
+    statusEl.textContent = "Lade…"; statusEl.style.color = "";
+    loadFromURL(csvUrl, (msg, isError) => {
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? "var(--rust)" : "";
+      if (!isError) localStorage.setItem(LS_SHEET_URL, csvUrl);
+    });
+  });
+
+  document.getElementById("btn-sheet-clear").addEventListener("click", () => {
+    localStorage.removeItem(LS_SHEET_URL);
+    document.getElementById("sheet-url").value = "";
+    document.getElementById("csv-status").textContent = "Sheet-Anbindung entfernt — nutze wieder data/data.csv.";
+    document.getElementById("csv-status").style.color = "";
+    loadFallbackCSV();
   });
 
   document.getElementById("btn-reset").addEventListener("click", () => {
