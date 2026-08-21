@@ -198,6 +198,14 @@ main{
   color: #4a4433;
   max-width: 46ch;
 }
+.clue-variant-badge{
+  margin:0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #8a8270;
+}
 .clue-body p{
   font-family: var(--font-display);
   font-size: clamp(19px, 3.4vw, 26px);
@@ -375,6 +383,11 @@ main{
   border-radius: 3px;
   display:block;
   box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+.field-gallery{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 @media (max-width: 560px){

@@ -59,6 +59,17 @@ function isImageValue(val) {
   return typeof val === "string" && /^https?:\/\//i.test(val.trim());
 }
 
+// Extrahiert ALLE Bild-Links aus einer Zelle, egal ob sie mit Leerzeichen,
+// Zeilenumbrüchen, Kommas oder Semikolons getrennt sind. Ein Land kann z. B.
+// mehrere Bollard-Varianten (mehrere Fotos) in derselben Zelle haben.
+function extractImageUrls(raw) {
+  if (!raw) return [];
+  const matches = raw.match(/https?:\/\/\S+/gi) || [];
+  return matches
+    .map(u => u.replace(/[),.;:!?'"\]>]+$/, "")) // Satzzeichen am Ende abschneiden
+    .filter(Boolean);
+}
+
 // Erlaubt kleine Abweichungen zwischen Basis-Spalte und Bild-Spalten-Namen,
 // z. B. Singular/Plural: "Pole URL" soll trotzdem zu "Poles" passen,
 // "Chevron URL" zu "Chevrons".
@@ -344,9 +355,11 @@ function renderCountryInfo(countryName) {
   allColumns.forEach(col => {
     const raw = (row[col] || "").trim();
     const companionCol = imageCompanionOf[col];
-    const imageRaw = companionCol ? (row[companionCol] || "").trim() : (isImageValue(raw) ? raw : "");
-    const hasImage = imageRaw && imageRaw !== "-" && isImageValue(imageRaw);
-    const textRaw = (raw && raw !== "-" && raw !== imageRaw && !isImageValue(raw)) ? raw : "";
+    const companionRaw = companionCol ? (row[companionCol] || "").trim() : "";
+    const imageUrls = companionCol ? extractImageUrls(companionRaw) : (isImageValue(raw) ? [raw] : []);
+    const hasImage = imageUrls.length > 0;
+    // Textwert nur zeigen, wenn er nicht selbst nur die Bild-Links wiederholt.
+    const textRaw = (raw && raw !== "-" && extractImageUrls(raw).length === 0) ? raw : "";
     const hasText = !!textRaw;
     const hasValue = hasImage || hasText;
 
@@ -367,12 +380,17 @@ function renderCountryInfo(countryName) {
       value.appendChild(span);
     } else {
       if (hasImage) {
-        const img = document.createElement("img");
-        img.src = imageRaw;
-        img.alt = `${col} — ${countryName}`;
-        img.loading = "lazy";
-        img.onerror = () => { img.remove(); };
-        value.appendChild(img);
+        const gallery = document.createElement("div");
+        gallery.className = "field-gallery";
+        imageUrls.forEach((url, i) => {
+          const img = document.createElement("img");
+          img.src = url;
+          img.alt = `${col} — ${countryName} (${i + 1}/${imageUrls.length})`;
+          img.loading = "lazy";
+          img.onerror = () => { img.remove(); };
+          gallery.appendChild(img);
+        });
+        value.appendChild(gallery);
       }
       if (hasText) {
         const p = document.createElement("p");
@@ -401,10 +419,9 @@ function buildPool() {
     activeColumns.forEach(col => {
       const val = (r[col] || "").trim();
       const companionCol = imageCompanionOf[col];
-      const imageRaw = companionCol ? (r[companionCol] || "").trim() : "";
-      const image = (imageRaw && imageRaw !== "-") ? imageRaw : "";
-      if ((!val || val === "-") && !image) return;
-      pool.push({ country, column: col, value: val, image });
+      const images = companionCol ? extractImageUrls((r[companionCol] || "").trim()) : [];
+      if ((!val || val === "-") && images.length === 0) return;
+      pool.push({ country, column: col, value: val, images });
     });
   });
   return pool;
@@ -465,9 +482,14 @@ function nextQuestion() {
     reverse ? `${currentItem.column} — welches Land?` : currentItem.column;
 
   const clueValue = reverse ? currentItem.country : currentItem.value;
-  const clueImage = reverse ? "" : currentItem.image;
+  const clueImages = reverse ? [] : currentItem.images;
+  // Bei mehreren Bild-Varianten (z. B. 3 Bollard-Fotos) wird pro Frage zufällig
+  // eine davon gezeigt — beim Wiederholen bekommt man so nach und nach alle Varianten zu sehen.
+  const clueImage = clueImages && clueImages.length
+    ? clueImages[Math.floor(Math.random() * clueImages.length)]
+    : "";
 
-  if (!reverse && clueImage && isImageValue(clueImage)) {
+  if (!reverse && clueImage) {
     // bevorzugt: Bild aus der verknüpften Bild-Spalte (z. B. "Bollard URL")
     clueBody.innerHTML = "";
     const wrap = document.createElement("div");
@@ -477,7 +499,13 @@ function nextQuestion() {
     img.alt = currentItem.column;
     img.onerror = () => { img.remove(); };
     wrap.appendChild(img);
-    if (clueValue && clueValue !== "-" && clueValue !== clueImage && !isImageValue(clueValue)) {
+    if (clueImages.length > 1) {
+      const badge = document.createElement("p");
+      badge.className = "clue-variant-badge";
+      badge.textContent = `Variante ${clueImages.indexOf(clueImage) + 1} von ${clueImages.length}`;
+      wrap.appendChild(badge);
+    }
+    if (clueValue && clueValue !== "-" && extractImageUrls(clueValue).length === 0) {
       const cap = document.createElement("p");
       cap.className = "clue-caption";
       cap.textContent = clueValue;
