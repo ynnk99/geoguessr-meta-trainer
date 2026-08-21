@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Atlas — GeoGuessr Meta Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="contours" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-pin">●</span>
+    <div>
+      <h1>Meta Atlas</h1>
+      <p class="tagline">Lern deine Metas. Merk dir, was sitzt.</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button id="btn-settings" class="btn-ghost" type="button">Einstellungen</button>
+    <button id="btn-stats" class="btn-ghost" type="button">Fortschritt</button>
+  </div>
+</header>
+
+<main id="view-root">
+
+  <!-- QUIZ VIEW -->
+  <section id="view-quiz" class="view">
+    <div class="category-bar">
+      <label for="category-select">Kategorie</label>
+      <select id="category-select"></select>
+    </div>
+    <div class="scoreboard" id="scoreboard">
+      <span class="score-item"><span class="score-label">Streak</span><span class="score-value" id="score-streak">0</span></span>
+      <span class="score-item"><span class="score-label">Session</span><span class="score-value" id="score-session">0/0</span></span>
+      <span class="score-item"><span class="score-label">Gesamt</span><span class="score-value" id="score-total">—</span></span>
+    </div>
+
+    <div class="clue-card" id="clue-card">
+      <div class="clue-pin"></div>
+      <div class="clue-label" id="clue-label">Meta</div>
+      <div class="clue-body" id="clue-body">
+        <p class="empty-msg">Lade Daten…</p>
+      </div>
+      <div class="confidence-dots" id="confidence-dots" title="Merkstärke für diese Meta"></div>
+    </div>
+
+    <div class="answer-zone">
+      <div class="mode-toggle" role="group" aria-label="Antwortmodus">
+        <button class="mode-btn active" data-mode="type" id="mode-type" type="button">Tippen</button>
+        <button class="mode-btn" data-mode="choice" id="mode-choice" type="button">Auswählen</button>
+      </div>
+
+      <form id="type-form" class="type-form">
+        <input list="country-list" id="type-input" class="type-input" placeholder="Land eingeben…" autocomplete="off">
+        <datalist id="country-list"></datalist>
+        <button type="submit" class="btn-primary">Antworten</button>
+      </form>
+
+      <div id="choice-form" class="choice-form hidden"></div>
+
+      <div id="feedback" class="feedback hidden">
+        <p id="feedback-text"></p>
+        <button id="btn-next" class="btn-primary" type="button">Weiter →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS VIEW -->
+  <section id="view-settings" class="view hidden">
+    <h2>Einstellungen</h2>
+
+    <div class="panel">
+      <h3>Datenquelle</h3>
+      <p class="muted">Standardmäßig wird <code>data/data.csv</code> geladen. Du kannst stattdessen eine eigene CSV-Datei hochladen (z.&nbsp;B. der Export aus deinem Google&nbsp;Sheet).</p>
+      <input type="file" id="csv-upload" accept=".csv">
+      <p class="muted small" id="csv-status"></p>
+    </div>
+
+    <div class="panel">
+      <h3>Mix für „Alle Kategorien“</h3>
+      <p class="muted">Wähle, welche Spalten im gemischten Modus vorkommen. Einzelne Kategorien kannst du oben im Quiz per Dropdown gezielt üben, unabhängig von dieser Auswahl.</p>
+      <div id="column-toggles" class="column-toggles"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Fortschritt</h3>
+      <p class="muted">Setzt alle gespeicherten Ergebnisse (richtig/falsch je Meta) zurück.</p>
+      <button id="btn-reset" class="btn-danger" type="button">Fortschritt zurücksetzen</button>
+    </div>
+  </section>
+
+  <!-- STATS VIEW -->
+  <section id="view-stats" class="view hidden">
+    <h2>Fortschritt</h2>
+    <div class="stats-summary" id="stats-summary"></div>
+    <table class="stats-table" id="stats-table">
+      <thead>
+        <tr><th>Land</th><th>Meta</th><th>Versuche</th><th>Richtig</th><th>Quote</th><th>Merkstärke</th></tr>
+      </thead>
+      <tbody id="stats-body"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>Daten bleiben nur in deinem Browser (localStorage). Bilder werden extern verlinkt aus deiner CSV.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
