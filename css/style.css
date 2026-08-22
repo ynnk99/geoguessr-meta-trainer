@@ -487,6 +487,18 @@ main{
   flex-wrap: wrap;
   gap: 10px;
 }
+.field-broken-link{
+  display:inline-flex;
+  align-items:center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--rust);
+  border: 1px dashed var(--rust);
+  border-radius: 6px;
+  padding: 8px 12px;
+  text-decoration: none;
+}
+.field-broken-link:hover{ background: rgba(210,96,58,.1); }
 
 @media (max-width: 560px){
   .field-row{ grid-template-columns: 1fr; gap: 6px; }

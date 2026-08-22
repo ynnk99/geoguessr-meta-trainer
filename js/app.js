@@ -60,11 +60,12 @@ function isImageValue(val) {
 }
 
 // Extrahiert ALLE Bild-Links aus einer Zelle, egal ob sie mit Leerzeichen,
-// Zeilenumbrüchen, Kommas oder Semikolons getrennt sind. Ein Land kann z. B.
+// Zeilenumbrüchen, Kommas oder Semikolons getrennt sind — auch OHNE Leerzeichen
+// nach dem Trennzeichen (z. B. "url1.png,url2.png"). Ein Land kann z. B.
 // mehrere Bollard-Varianten (mehrere Fotos) in derselben Zelle haben.
 function extractImageUrls(raw) {
   if (!raw) return [];
-  const matches = raw.match(/https?:\/\/\S+/gi) || [];
+  const matches = raw.match(/https?:\/\/[^\s,;]+/gi) || [];
   return matches
     .map(u => u.replace(/[),.;:!?'"\]>]+$/, "")) // Satzzeichen am Ende abschneiden
     .filter(Boolean);
@@ -388,7 +389,15 @@ function renderCountryInfo(countryName) {
           img.src = url;
           img.alt = `${col} — ${countryName} (${i + 1}/${imageUrls.length})`;
           img.loading = "lazy";
-          img.onerror = () => { img.remove(); };
+          img.onerror = () => {
+            const broken = document.createElement("a");
+            broken.href = url;
+            broken.target = "_blank";
+            broken.rel = "noopener noreferrer";
+            broken.className = "field-broken-link";
+            broken.textContent = "Bild nicht erreichbar ↗";
+            img.replaceWith(broken);
+          };
           gallery.appendChild(img);
         });
         value.appendChild(gallery);
@@ -508,7 +517,12 @@ function nextQuestion() {
     const img = document.createElement("img");
     img.src = clueImage;
     img.alt = currentItem.column;
-    img.onerror = () => { img.remove(); };
+    img.onerror = () => {
+      const p = document.createElement("p");
+      p.className = "empty-msg";
+      p.textContent = "Bild nicht erreichbar.";
+      img.replaceWith(p);
+    };
     wrap.appendChild(img);
     if (clueImages.length > 1) {
       const badge = document.createElement("p");
