@@ -461,6 +461,12 @@ function nextQuestion() {
   document.getElementById("type-form").classList.toggle("hidden", answerMode !== "type");
   document.getElementById("choice-form").classList.toggle("hidden", answerMode !== "choice");
 
+  // kleine Eintritts-Animation der Postkarte für jede neue Frage neu anstoßen
+  const clueCard = document.getElementById("clue-card");
+  clueCard.style.animation = "none";
+  void clueCard.offsetWidth; // reflow erzwingen
+  clueCard.style.animation = "";
+
   if (pool.length === 0) {
     const msg = category === ALL_CATEGORIES
       ? `Keine Metas ausgewählt. Geh zu „Einstellungen“ und aktiviere mindestens eine Spalte.`
@@ -739,6 +745,19 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-next").addEventListener("click", () => {
     showView("view-quiz");
     nextQuestion();
+  });
+
+  // Enter / Leertaste laden die nächste Frage, sobald eine Antwort aufgedeckt ist.
+  // Nur aktiv, wenn wir im Quiz sind und das Feedback (richtig/falsch) sichtbar ist —
+  // so wird das Tippen im Eingabefeld oder in anderen Ansichten nicht gestört.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+    const quizView = document.getElementById("view-quiz");
+    const feedback = document.getElementById("feedback");
+    if (quizView.classList.contains("hidden")) return;
+    if (feedback.classList.contains("hidden")) return;
+    e.preventDefault();
+    document.getElementById("btn-next").click();
   });
 
   document.getElementById("csv-upload").addEventListener("change", (e) => {
