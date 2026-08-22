@@ -652,8 +652,9 @@ button:focus-visible, input:focus-visible, select:focus-visible{
   to{ opacity: 1; }
 }
 .lightbox-img{
-  max-width: 92vw;
-  max-height: 92vh;
+  width: min(92vw, 1400px);
+  height: min(92vh, 1400px);
+  object-fit: contain;
   border-radius: 6px;
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
   cursor: default;
