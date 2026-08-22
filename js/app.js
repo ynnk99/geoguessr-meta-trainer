@@ -356,7 +356,8 @@ function renderCountryInfo(countryName) {
     const raw = (row[col] || "").trim();
     const companionCol = imageCompanionOf[col];
     const companionRaw = companionCol ? (row[companionCol] || "").trim() : "";
-    const imageUrls = companionCol ? extractImageUrls(companionRaw) : (isImageValue(raw) ? [raw] : []);
+    let imageUrls = companionCol ? extractImageUrls(companionRaw) : [];
+    if (imageUrls.length === 0) imageUrls = extractImageUrls(raw);
     const hasImage = imageUrls.length > 0;
     // Textwert nur zeigen, wenn er nicht selbst nur die Bild-Links wiederholt.
     const textRaw = (raw && raw !== "-" && extractImageUrls(raw).length === 0) ? raw : "";
@@ -419,7 +420,11 @@ function buildPool() {
     activeColumns.forEach(col => {
       const val = (r[col] || "").trim();
       const companionCol = imageCompanionOf[col];
-      const images = companionCol ? extractImageUrls((r[companionCol] || "").trim()) : [];
+      // Bevorzugt Bild-Links aus der verknüpften Bild-Spalte; falls es die nicht gibt
+      // (oder sie leer ist), werden Bild-Links notfalls direkt aus der Basis-Spalte
+      // selbst extrahiert (Fallback für „ein oder mehrere Links stehen direkt in der Zelle“).
+      let images = companionCol ? extractImageUrls((r[companionCol] || "").trim()) : [];
+      if (images.length === 0) images = extractImageUrls(val);
       if ((!val || val === "-") && images.length === 0) return;
       pool.push({ country, column: col, value: val, images });
     });
